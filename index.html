@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live New Rental Updates</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #ffffff;
+      text-align: center;
+      font-size: 36px;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .description {
+      text-align: center;
+      color: #cccccc;
+      margin-bottom: 30px;
+    }
+
+    form {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #333333;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #ffffff;
+      font-size: 18px;
+    }
+
+    input[type="email"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+      font-size: 16px;
+      background-color: #444444;
+      color: #ffffff;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #ffffff;
+      border: none;
+      padding: 12px 24px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li {
+      background-color: #444444;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      font-size: 16px;
+      color: #ffffff;
+    }
+
+    .submit-button {
+      display: block;
+      width: 100%;
+      margin-top: 25px;
+    }
+
+    p {
+      font-size: 18px;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+
+    h3 {
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #ffffff;
+    }
+  </style>
+  <script>
+    function isValidPostcode(postcode) {
+      const postcodeRanges = [
+        { state: 'NT', range: /^(0[289]\d{2}|0[89]\d{3})$/ },
+        { state: 'NSW/ACT', range: /^(2\d{3}|02\d{2})$/ },
+        { state: 'VIC', range: /^(3\d{3}|8\d{3})$/ },
+        { state: 'QLD', range: /^(4\d{3}|9\d{3})$/ },
+        { state: 'SA', range: /^(5\d{3})$/ },
+        { state: 'WA', range: /^(6\d{3})$/ },
+        { state: 'TAS', range: /^(7\d{3})$/ },
+      ];
+
+      return postcodeRanges.some(({ range }) => range.test(postcode));
+    }
+
+    function getValidPostcodeRanges() {
+      const postcodeRanges = [
+        { state: 'NT', range: '0800—0899, 0900—0999 (LVRs and PO Boxes only)' },
+        { state: 'NSW', range: '1000—1999 (LVRs and PO Boxes only), 2000—2599, 2619—2899, 2921—2999' },
+        { state: 'ACT', range: '0200—0299 (LVRs and PO Boxes only), 2600—2618, 2900—2920' },
+        { state: 'VIC', range: '3000—3999, 8000—8999 (LVRs and PO Boxes only)' },
+        { state: 'QLD', range: '4000—4999, 9000—9999 (LVRs and PO Boxes only)' },
+        { state: 'SA', range: '5000—5799, 5800—5999 (LVRs and PO Boxes only)' },
+        { state: 'WA', range: '6000—6797, 6800—6999 (LVRs and PO Boxes only)' },
+        { state: 'TAS', range: '7000—7799, 7800—7999 (LVRs and PO Boxes only)' },
+      ];
+
+      return postcodeRanges.map(({ state, range }) => `${state}: ${range}`).join('\n');
+    }
+
+    function addPostcode() {
+      const postcode = document.getElementById('postcode').value;
+      if (isValidPostcode(postcode)) {
+        const postcodeList = document.getElementById('postcode-list');
+        const listItem = document.createElement('li');
+        listItem.textContent = postcode;
+        postcodeList.appendChild(listItem);
+        document.getElementById('postcode').value = '';
+      } else {
+        const validRanges = getValidPostcodeRanges();
+        alert(`Invalid postcode. Please enter a valid Australian postcode.\n\nValid postcode ranges:\n${validRanges}`);
+      }
+    }
+
+    function isValidMaxPrice(price) {
+      return /^\d+$/.test(price) && parseInt(price) > 0;
+    }
+
+    async function submitForm() {
+      const email = document.getElementById('email').value;
+      const maxPrice = document.getElementById('max-price').value;
+      const postcodes = Array.from(document.getElementById('postcode-list').children).map(li => li.textContent);
+
+      if (!isValidMaxPrice(maxPrice)) {
+        alert('Please enter a valid maximum price (positive number).');
+        return;
+      }
+
+      try {
+        const response = await axios.post('/submit', { email, maxPrice, postcodes });
+        console.log(response.data);
+        alert('Form submitted successfully!');
+      } catch (error) {
+        console.error(error);
+        alert('An error occurred while submitting the form.');
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Live New Rental Updates</h1>
+  <div class="description">
+  </div>
+  <form>
+    <p>Please enter the postcodes that you want to monitor, the maximum price you are interested in, and your email address to receive live updates when a property with a price less than or equal to your maximum is posted on domain.com.au.</p>
+
+    <label for="email">Email:</label>
+    <input type="email" id="email" required>
+
+    <label for="max-price">Maximum Price:</label>
+    <input type="text" id="max-price" required>
+
+    <label for="postcode">Postcode:</label>
+    <input type="text" id="postcode">
+    <button type="button" onclick="addPostcode()">Add Postcode</button>
+
+    <h3>Postcodes:</h3>
+    <ul id="postcode-list"></ul>
+
+    <button type="button" class="submit-button" onclick="submitForm()">Submit</button>
+  </form>
+</body>
+</html>
