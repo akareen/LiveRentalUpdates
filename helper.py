@@ -33,7 +33,7 @@ def get_soup(url):
     except requests.RequestException as e:
         print(f"Error fetching URL {url}: {e}")
         return None
-    return BeautifulSoup(response.text, 'lxml')
+    return BeautifulSoup(response.text, 'html.parser')
 
 
 def convert_to_weekly_price(price: str) -> Union[int, None]:

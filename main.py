@@ -29,7 +29,7 @@ def process_postcode(postcode_number: str, seen_listings: Set[str]) -> Dict[str,
             break
         
         page_listings = soup.select('[data-testid^="listing-card-wrapper-"]')
-        unique_seen =  process_page_listings(page_listings, listing_info, seen_listings)
+        unique_seen =  process_page_listings(postcode_number, page_listings, listing_info, seen_listings)
         if not unique_seen:
             break
         
@@ -38,7 +38,7 @@ def process_postcode(postcode_number: str, seen_listings: Set[str]) -> Dict[str,
     return listing_info
 
 
-def process_page_listings(page_listings: List, listing_info: Dict[str, Dict[str, str]], seen_listings: Set[str]) -> bool:
+def process_page_listings(postcode_number: int, page_listings: List, listing_info: Dict[str, Dict[str, str]], seen_listings: Set[str]) -> bool:
     unique_seen = False
     for listing in page_listings:
         price_element = listing.select_one('[data-testid="listing-card-price"]')
@@ -51,8 +51,18 @@ def process_page_listings(page_listings: List, listing_info: Dict[str, Dict[str,
         listing_url = listing_link['href']
         listing_id = listing_url.split("-")[-1]
 
+        features_list = [container.text.strip().split()[0] for container in listing.select('[data-testid="property-features-text-container"]')]
+
         if listing_id not in seen_listings:
-            listing_info[listing_id] = {'url': listing_url, 'weekly_price': weekly_price, 'html': str(listing)}
+            listing_info[listing_id] = {
+                'postcode': postcode_number,
+                'listing_id': listing_id,
+                'url': listing_url, 
+                'beds': features_list[0] if features_list else None, 
+                'bath': features_list[1] if features_list else None, 
+                'weekly_price': weekly_price, 
+                'html': str(listing)
+            }
             unique_seen = True
 
     return unique_seen
@@ -64,10 +74,12 @@ def _write_listings_to_csv(original_file_path: str, new_listing_info: Dict[str, 
     data_to_append = []
     for postcode, info in new_listing_info.items():
         for listing_id, listing_info in info.items():
-            data_to_append.append([postcode, listing_id, listing_info['url'], listing_info['price']])
+            listing_info.pop('html')
+            data_to_append.append(listing_info)
     
-    new_df = pd.DataFrame(data_to_append, columns=['postcode', 'listing_id', 'url'])
+    new_df = pd.DataFrame(data_to_append)
     updated_df = pd.concat([df, new_df], ignore_index=True)
+    updated_df.sort_values(by='postcode', inplace=True)
 
     updated_df.to_csv(original_file_path, index=False)
 
