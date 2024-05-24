@@ -5,13 +5,9 @@ import concurrent.futures
 import pandas as pd
 
 def read_csv_into_set(file_path: str) -> Set[str]:
-    listing_ids = set()
-    with open(file_path, 'r') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            listing_ids.add(row[2])
-    return listing_ids
-
+    df = pd.read_csv(file_path, header=0)
+    listing_id_set = set(df['listing_id'].astype(str))
+    return listing_id_set
 
 def process_postcode(postcode_number: str, seen_listings: Set[str]) -> Dict[str, Dict[str, str]]:
     page_number = 1
