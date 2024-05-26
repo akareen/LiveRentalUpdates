@@ -7,36 +7,61 @@ import os
 from urllib.parse import quote_plus
 
 from utils import generate_postcodes
-
 from scrapers.abstract_scraper import RealEstateScraper
 from scrapers.domain_scraper import DomainScraper
 from scrapers.rea_scraper import REAScraper
 
 load_dotenv()
 
-def get_mongo_client():
+def get_mongo_client() -> MongoClient:
+    """
+    Get a MongoDB client using connection details from environment variables.
+
+    Returns:
+        MongoClient: A MongoDB client instance.
+
+    Raises:
+        ValueError: If any MongoDB connection details are missing in environment variables.
+    """
     username = os.getenv("MONGO_USERNAME")
     password = os.getenv("MONGO_PASSWORD")
     host = os.getenv("MONGO_HOST")
     options = os.getenv("MONGO_OPTIONS")
-    ca_file_path = os.getenv("CA_FILE_PATH", "/usr/local/etc/openssl/cert.pem")  # Default path for macOS
     
     if not all([username, password, host, options]):
         raise ValueError("MongoDB connection details are not fully set in environment variables")
     
     connection_string = (
-        f"mongodb+srv://{quote_plus(username)}:{quote_plus(password)}@{host}/{options}&ssl=true&tlsCAFile={quote_plus(ca_file_path)}"
+        f"mongodb+srv://{quote_plus(username)}:{quote_plus(password)}@{host}/{options}"
     )
     return MongoClient(connection_string)
 
-def read_seen_listings(db, collection_name: str) -> Set[str]:
+def read_seen_listings(db: MongoClient, collection_name: str) -> Set[str]:
+    """
+    Read the list of seen listings from the MongoDB collection.
+
+    Args:
+        db (MongoClient): The MongoDB client instance.
+        collection_name (str): The name of the collection to read from.
+
+    Returns:
+        Set[str]: A set of listing IDs that have already been seen.
+    """
     collection = db[collection_name]
     seen_listings = set()
     for listing in collection.find({}, {"_id": 0, "listing_id": 1}):
         seen_listings.add(listing["listing_id"])
     return seen_listings
 
-def write_new_listings(db, collection_name: str, new_listings: Dict[str, Dict[str, str]]) -> None:
+def write_new_listings(db: MongoClient, collection_name: str, new_listings: Dict[str, Dict[str, str]]) -> None:
+    """
+    Write new listings to the MongoDB collection.
+
+    Args:
+        db (MongoClient): The MongoDB client instance.
+        collection_name (str): The name of the collection to write to.
+        new_listings (Dict[str, Dict[str, str]]): A dictionary containing new listings to be added.
+    """
     collection = db[collection_name]
     operations = []
 
@@ -55,6 +80,13 @@ def write_new_listings(db, collection_name: str, new_listings: Dict[str, Dict[st
         collection.bulk_write(operations)
 
 def main(db_name: str = 'realestate', collection_name: str = 'listings') -> None:
+    """
+    Main function to orchestrate the scraping and storing of real estate listings.
+
+    Args:
+        db_name (str, optional): The name of the MongoDB database. Defaults to 'realestate'.
+        collection_name (str, optional): The name of the MongoDB collection. Defaults to 'listings'.
+    """
     postcodes: List[str] = generate_postcodes()
     client = get_mongo_client()
     db = client[db_name]
@@ -66,7 +98,7 @@ def main(db_name: str = 'realestate', collection_name: str = 'listings') -> None
     scrapers: List[RealEstateScraper] = [DomainScraper(), REAScraper()]
 
     for scraper in scrapers:
-        if scraper.IMPLEMENTED == False:
+        if not scraper.IMPLEMENTED:
             continue
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future_to_postcode = {

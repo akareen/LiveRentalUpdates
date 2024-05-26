@@ -1,11 +1,17 @@
+from typing import Dict, List, Set, Union
 import requests
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
-from typing import Dict, List, Set, Union
 
 
 def generate_postcodes() -> List[str]:
+    """
+    Generate a list of valid Australian postcodes based on state ranges.
+
+    Returns:
+        List[str]: A list of valid postcodes as strings.
+    """
     postcode_ranges = {
         'NSW': [(2000, 2599), (2619, 2899), (2921, 2999)],
         'ACT': [(2600, 2618), (2900, 2920)],
@@ -17,7 +23,7 @@ def generate_postcodes() -> List[str]:
         'NT': [(800, 899)]
     }
 
-    valid_postcodes = []
+    valid_postcodes: List[str] = []
 
     for state, ranges in postcode_ranges.items():
         for start, end in ranges:
@@ -26,8 +32,16 @@ def generate_postcodes() -> List[str]:
     return valid_postcodes
 
 
+def get_soup(url: str) -> Union[BeautifulSoup, None]:
+    """
+    Fetch a webpage and return a BeautifulSoup object.
 
-def get_soup(url):
+    Args:
+        url (str): The URL of the webpage to fetch.
+
+    Returns:
+        Union[BeautifulSoup, None]: A BeautifulSoup object if the request is successful, None otherwise.
+    """
     try:
         headers = {
             "User-Agent": "Mozilla/5.0",
@@ -51,6 +65,15 @@ def get_soup(url):
 
 
 def convert_to_weekly_price(price: str) -> Union[int, None]:
+    """
+    Convert a price string to a weekly price in integer form.
+
+    Args:
+        price (str): The price string to convert.
+
+    Returns:
+        Union[int, None]: The weekly price as an integer, or None if the price cannot be converted.
+    """
     price = price.lower().replace(",", "").strip()
     
     match = re.search(r"\d+(\.\d+)?", price)
@@ -78,6 +101,15 @@ def convert_to_weekly_price(price: str) -> Union[int, None]:
     
 
 def read_csv_into_set(file_path: str) -> Set[str]:
+    """
+    Read a CSV file into a set of listing IDs.
+
+    Args:
+        file_path (str): The path to the CSV file.
+
+    Returns:
+        Set[str]: A set of listing IDs.
+    """
     try:
         df = pd.read_csv(file_path, header=0)
         listing_id_set = set(df['listing_id'].astype(str))
@@ -87,6 +119,13 @@ def read_csv_into_set(file_path: str) -> Set[str]:
 
 
 def write_listings_to_csv(original_file_path: str, new_listing_info: Dict[str, Dict[str, str]]) -> None:
+    """
+    Write new listing information to a CSV file.
+
+    Args:
+        original_file_path (str): The path to the original CSV file.
+        new_listing_info (Dict[str, Dict[str, str]]): A dictionary containing new listing information.
+    """
     try:
         df = pd.read_csv(original_file_path, header=0)
     except (FileNotFoundError, pd.errors.EmptyDataError):
